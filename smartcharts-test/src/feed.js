@@ -1,3 +1,52 @@
+const SYNTHETIC_SYMBOLS = [
+  { symbol: 'R_10', name: 'Volatility 10 Index' },
+  { symbol: 'R_25', name: 'Volatility 25 Index' },
+  { symbol: 'R_50', name: 'Volatility 50 Index' },
+  { symbol: 'R_75', name: 'Volatility 75 Index' },
+  { symbol: 'R_100', name: 'Volatility 100 Index' }
+];
+
+function localServerTime(request = {}) {
+  return {
+    echo_req: request,
+    msg_type: 'time',
+    req_id: request.req_id,
+    time: Math.floor(Date.now() / 1000)
+  };
+}
+
+function localSyntheticTradingTimes(request = {}) {
+  return {
+    echo_req: request,
+    msg_type: 'trading_times',
+    req_id: request.req_id,
+    trading_times: {
+      markets: [
+        {
+          name: 'Synthetic Indices',
+          submarkets: [
+            {
+              name: 'Continuous Indices',
+              symbols: SYNTHETIC_SYMBOLS.map(({ symbol, name }) => ({
+                symbol,
+                name,
+                feed_license: 'chartonly',
+                delay_amount: 0,
+                events: [],
+                times: {
+                  open: ['00:00:00'],
+                  close: ['23:59:59']
+                },
+                trading_days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+              }))
+            }
+          ]
+        }
+      ]
+    }
+  };
+}
+
 export class DerivPublicFeed {
   constructor(onStatus) {
     this.onStatus = onStatus;
@@ -67,11 +116,13 @@ export class DerivPublicFeed {
     await this.waitUntilOpen();
     const reqId = this.reqId++;
     const payload = { ...request, req_id: reqId };
+
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(reqId);
         reject(new Error('Tiempo de espera agotado'));
       }, timeoutMs);
+
       this.pending.set(reqId, { resolve, reject, timer });
       this.ws.send(JSON.stringify(payload));
     });
@@ -79,50 +130,90 @@ export class DerivPublicFeed {
 
   handleMessage(event) {
     let message;
-    try { message = JSON.parse(event.data); } catch (_) { return; }
+    try {
+      message = JSON.parse(event.data);
+    } catch (_) {
+      return;
+    }
 
     if (message.req_id && this.pending.has(message.req_id)) {
       const pending = this.pending.get(message.req_id);
       clearTimeout(pending.timer);
       this.pending.delete(message.req_id);
-      if (message.error) pending.reject(new Error(message.error.message || 'Error Deriv'));
-      else pending.resolve(message);
+
+      if (message.error) {
+        pending.reject(new Error(message.error.message || 'Error Deriv'));
+      } else {
+        pending.resolve(message);
+      }
     }
 
     const subscriptionId = message.subscription?.id;
     if (subscriptionId && this.subscriptionsById.has(subscriptionId)) {
       const callback = this.subscriptionsById.get(subscriptionId);
-      try { callback(message); } catch (error) { console.error(error); }
+      try {
+        callback(message);
+      } catch (error) {
+        console.error(error);
+      }
     }
   }
 
-  requestAPI = (request) => this.send(request);
+  requestAPI = (request = {}) => {
+    // Los cinco índices sintéticos operan de forma continua.
+    // SmartCharts quedaba detenido esperando el enorme pedido trading_times.
+    // Se responde localmente para que pase directo a ticks_history.
+    if (request.time === 1) {
+      return Promise.resolve(localServerTime(request));
+    }
+
+    if (request.trading_times) {
+      return Promise.resolve(localSyntheticTradingTimes(request));
+    }
+
+    return this.send(request);
+  };
 
   requestSubscribe = async (request, callback) => {
     try {
       const response = await this.send({ ...request, subscribe: 1 });
       callback(response);
+
       const subscriptionId = response.subscription?.id;
       if (subscriptionId) {
         this.subscriptionsById.set(subscriptionId, callback);
         this.subscriptionByCallback.set(callback, subscriptionId);
       }
     } catch (error) {
-      callback({ error: { message: error.message }, echo_req: request });
+      callback({
+        error: { message: error.message },
+        echo_req: request
+      });
     }
   };
 
   requestForget = async (_request, callback) => {
     const subscriptionId = this.subscriptionByCallback.get(callback);
     if (!subscriptionId) return;
+
     this.subscriptionByCallback.delete(callback);
     this.subscriptionsById.delete(subscriptionId);
-    try { await this.send({ forget: subscriptionId }); } catch (_) {}
+
+    try {
+      await this.send({ forget: subscriptionId });
+    } catch (_) {}
   };
 
   destroy() {
     this.manualClose = true;
     clearInterval(this.pingTimer);
-    try { this.ws?.close(); } catch (_) {}
+
+    for (const waiter of this.openWaiters.splice(0)) {
+      waiter.reject?.(new Error('Conexión cerrada'));
+    }
+
+    try {
+      this.ws?.close();
+    } catch (_) {}
   }
 }
