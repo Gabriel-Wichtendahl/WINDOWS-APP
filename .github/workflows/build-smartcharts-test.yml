@@ -25,11 +25,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: smartcharts-test/package-lock.json
 
-      - name: Instalar dependencias
-        run: npm install
+      - name: Limpiar lock privado e instalar dependencias completas
+        shell: powershell
+        run: |
+          if (Test-Path package-lock.json) {
+            Remove-Item package-lock.json -Force
+          }
+          npm config set registry https://registry.npmjs.org/
+          npm install --include=dev --legacy-peer-deps
+
+      - name: Verificar herramientas de compilación
+        run: |
+          npx webpack --version
+          npx electron-builder --version
 
       - name: Crear EXE portable
         run: npm run pack:win
