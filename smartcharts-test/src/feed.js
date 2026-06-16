@@ -30,7 +30,6 @@ function localSyntheticTradingTimes(request = {}) {
               symbols: SYNTHETIC_SYMBOLS.map(({ symbol, name }) => ({
                 symbol,
                 name,
-                // IMPORTANTE: SmartCharts interpreta "chartonly" como feed no disponible.
                 feed_license: 'realtime',
                 delay_amount: 0,
                 events: [],
@@ -51,10 +50,15 @@ function localSyntheticTradingTimes(request = {}) {
 export class DerivPublicFeed {
   constructor(onStatus) {
     this.onStatus = onStatus;
+
+    // Endpoint público oficial actual de Deriv.
+    // Se dejan los endpoints anteriores solo como respaldo.
     this.endpoints = [
+      'wss://api.derivws.com/trading/v1/options/ws/public',
       'wss://red.derivws.com/websockets/v3?app_id=12812&l=ES',
       'wss://ws.derivws.com/websockets/v3?app_id=1089&l=ES'
     ];
+
     this.endpointIndex = 0;
     this.reqId = 1;
     this.pending = new Map();
@@ -66,14 +70,20 @@ export class DerivPublicFeed {
   }
 
   connect() {
-    this.onStatus?.(false, 'Conectando datos…');
     const url = this.endpoints[this.endpointIndex % this.endpoints.length];
+    this.onStatus?.(false, 'Conectando datos…');
     this.ws = new WebSocket(url);
 
     this.ws.addEventListener('open', () => {
-      this.onStatus?.(true, 'Datos en vivo');
+      const usingNewPublicApi = url.includes('/trading/v1/options/ws/public');
+      this.onStatus?.(
+        true,
+        usingNewPublicApi ? 'Datos en vivo · API pública nueva' : 'Datos en vivo · respaldo'
+      );
+
       this.openWaiters.splice(0).forEach(({ resolve }) => resolve());
       clearInterval(this.pingTimer);
+
       this.pingTimer = setInterval(() => {
         if (this.ws?.readyState === WebSocket.OPEN) {
           this.ws.send(JSON.stringify({ ping: 1 }));
@@ -82,7 +92,11 @@ export class DerivPublicFeed {
     });
 
     this.ws.addEventListener('message', (event) => this.handleMessage(event));
-    this.ws.addEventListener('error', () => this.onStatus?.(false, 'Error de datos'));
+
+    this.ws.addEventListener('error', () => {
+      this.onStatus?.(false, 'Error de datos');
+    });
+
     this.ws.addEventListener('close', () => {
       clearInterval(this.pingTimer);
       this.onStatus?.(false, 'Reconectando…');
@@ -104,7 +118,9 @@ export class DerivPublicFeed {
   }
 
   waitUntilOpen(timeoutMs = 12000) {
-    if (this.ws?.readyState === WebSocket.OPEN) return Promise.resolve();
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      return Promise.resolve();
+    }
 
     return new Promise((resolve, reject) => {
       const waiter = { resolve, reject };
@@ -112,7 +128,11 @@ export class DerivPublicFeed {
 
       setTimeout(() => {
         const index = this.openWaiters.indexOf(waiter);
-        if (index >= 0) this.openWaiters.splice(index, 1);
+
+        if (index >= 0) {
+          this.openWaiters.splice(index, 1);
+        }
+
         reject(new Error('No abrió la conexión de mercado'));
       }, timeoutMs);
     });
@@ -127,7 +147,11 @@ export class DerivPublicFeed {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(reqId);
-        reject(new Error('Tiempo de espera agotado'));
+        reject(
+          new Error(
+            `Deriv no respondió a ${request.ticks_history ? 'ticks_history' : request.ticks ? 'ticks' : 'la solicitud'}`
+          )
+        );
       }, timeoutMs);
 
       this.pending.set(reqId, { resolve, reject, timer });
@@ -150,7 +174,11 @@ export class DerivPublicFeed {
       this.pending.delete(message.req_id);
 
       if (message.error) {
-        pending.reject(new Error(message.error.message || 'Error Deriv'));
+        pending.reject(
+          new Error(
+            `${message.error.code || 'Error'}: ${message.error.message || 'Error Deriv'}`
+          )
+        );
       } else {
         pending.resolve(message);
       }
@@ -183,45 +211,17 @@ export class DerivPublicFeed {
 
   requestSubscribe = async (request, callback) => {
     try {
-      const response = await this.send({ ...request, subscribe: 1 });
-      callback(response);
+      // SmartCharts pide ticks_history + subscribe.
+      // Para máxima compatibilidad con la API pública nueva:
+      // 1) pedimos primero el historial sin suscripción;
+      // 2) luego abrimos un stream separado de ticks en vivo.
+      if (request?.ticks_history) {
+        const symbol = request.ticks_history;
+        const historyRequest = { ...request };
 
-      const subscriptionId = response.subscription?.id;
+        delete historyRequest.subscribe;
 
-      if (subscriptionId) {
-        this.subscriptionsById.set(subscriptionId, callback);
-        this.subscriptionByCallback.set(callback, subscriptionId);
-      }
-    } catch (error) {
-      callback({
-        error: { message: error.message },
-        echo_req: request
-      });
-    }
-  };
+        const historyResponse = await this.send(historyRequest, 20000);
+        callback(historyResponse);
 
-  requestForget = async (_request, callback) => {
-    const subscriptionId = this.subscriptionByCallback.get(callback);
-    if (!subscriptionId) return;
-
-    this.subscriptionByCallback.delete(callback);
-    this.subscriptionsById.delete(subscriptionId);
-
-    try {
-      await this.send({ forget: subscriptionId });
-    } catch (_) {}
-  };
-
-  destroy() {
-    this.manualClose = true;
-    clearInterval(this.pingTimer);
-
-    for (const waiter of this.openWaiters.splice(0)) {
-      waiter.reject?.(new Error('Conexión cerrada'));
-    }
-
-    try {
-      this.ws?.close();
-    } catch (_) {}
-  }
-}
+        co
