@@ -1,40 +1,42 @@
 name: Crear EXE prueba 5 SmartCharts
 
 on:
-workflow_dispatch:
-push:
-branches: [main]
-paths:
-- "smartcharts-test/**"
-- ".github/workflows/build-smartcharts-test.yml"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "smartcharts-test/**"
+      - ".github/workflows/build-smartcharts-test.yml"
 
 jobs:
-build-windows:
-runs-on: windows-latest
-defaults:
-run:
-working-directory: smartcharts-test
+  build-windows:
+    runs-on: windows-latest
 
-steps:
-  - name: Descargar código
-    uses: actions/checkout@v4
+    defaults:
+      run:
+        working-directory: smartcharts-test
 
-  - name: Instalar Node.js
-    uses: actions/setup-node@v4
-    with:
-      node-version: "20"
-      cache: "npm"
-      cache-dependency-path: smartcharts-test/package-lock.json
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
 
-  - name: Instalar dependencias
-    run: npm install
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: smartcharts-test/package-lock.json
 
-  - name: Crear EXE portable
-    run: npm run pack:win
+      - name: Instalar dependencias
+        run: npm install
 
-  - name: Subir EXE
-    uses: actions/upload-artifact@v4
-    with:
-      name: Deriv-5-Graficos-SmartCharts-Test
-      path: smartcharts-test/dist/*.exe
-      if-no-files-found: error
+      - name: Crear EXE portable
+        run: npm run pack:win
+
+      - name: Subir EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deriv-5-Graficos-SmartCharts-Test
+          path: smartcharts-test/dist/*.exe
+          if-no-files-found: error
