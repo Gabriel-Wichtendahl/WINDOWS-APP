@@ -30,7 +30,8 @@ function localSyntheticTradingTimes(request = {}) {
               symbols: SYNTHETIC_SYMBOLS.map(({ symbol, name }) => ({
                 symbol,
                 name,
-                feed_license: 'chartonly',
+                // IMPORTANTE: SmartCharts interpreta "chartonly" como feed no disponible.
+                feed_license: 'realtime',
                 delay_amount: 0,
                 events: [],
                 times: {
@@ -85,13 +86,16 @@ export class DerivPublicFeed {
     this.ws.addEventListener('close', () => {
       clearInterval(this.pingTimer);
       this.onStatus?.(false, 'Reconectando…');
+
       for (const { reject, timer } of this.pending.values()) {
         clearTimeout(timer);
         reject(new Error('Conexión de mercado cerrada'));
       }
+
       this.pending.clear();
       this.subscriptionsById.clear();
       this.subscriptionByCallback.clear();
+
       if (!this.manualClose) {
         this.endpointIndex += 1;
         setTimeout(() => this.connect(), 1800);
@@ -101,9 +105,11 @@ export class DerivPublicFeed {
 
   waitUntilOpen(timeoutMs = 12000) {
     if (this.ws?.readyState === WebSocket.OPEN) return Promise.resolve();
+
     return new Promise((resolve, reject) => {
       const waiter = { resolve, reject };
       this.openWaiters.push(waiter);
+
       setTimeout(() => {
         const index = this.openWaiters.indexOf(waiter);
         if (index >= 0) this.openWaiters.splice(index, 1);
@@ -114,6 +120,7 @@ export class DerivPublicFeed {
 
   async send(request, timeoutMs = 15000) {
     await this.waitUntilOpen();
+
     const reqId = this.reqId++;
     const payload = { ...request, req_id: reqId };
 
@@ -130,6 +137,7 @@ export class DerivPublicFeed {
 
   handleMessage(event) {
     let message;
+
     try {
       message = JSON.parse(event.data);
     } catch (_) {
@@ -149,8 +157,10 @@ export class DerivPublicFeed {
     }
 
     const subscriptionId = message.subscription?.id;
+
     if (subscriptionId && this.subscriptionsById.has(subscriptionId)) {
       const callback = this.subscriptionsById.get(subscriptionId);
+
       try {
         callback(message);
       } catch (error) {
@@ -160,9 +170,6 @@ export class DerivPublicFeed {
   }
 
   requestAPI = (request = {}) => {
-    // Los cinco índices sintéticos operan de forma continua.
-    // SmartCharts quedaba detenido esperando el enorme pedido trading_times.
-    // Se responde localmente para que pase directo a ticks_history.
     if (request.time === 1) {
       return Promise.resolve(localServerTime(request));
     }
@@ -180,6 +187,7 @@ export class DerivPublicFeed {
       callback(response);
 
       const subscriptionId = response.subscription?.id;
+
       if (subscriptionId) {
         this.subscriptionsById.set(subscriptionId, callback);
         this.subscriptionByCallback.set(callback, subscriptionId);
