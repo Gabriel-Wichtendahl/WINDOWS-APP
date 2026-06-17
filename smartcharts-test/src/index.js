@@ -121,7 +121,45 @@ function centerLiveWindow(state, force = false) {
 function pauseLiveFollow(symbol) {
   const state = chartStates.get(symbol);
   if (!state || selectedTool !== 'cursor') return;
-  state.manualViewUntil = Date.now() + MANUAL_VIEW_HOLD_MS;
+
+  // En modo ampliado, cualquier zoom o desplazamiento manual queda fijo
+  // hasta volver al mosaico. En mosaico se conserva la pausa de 8 segundos.
+  state.manualViewUntil = focusSymbol === symbol
+    ? Number.POSITIVE_INFINITY
+    : Date.now() + MANUAL_VIEW_HOLD_MS;
+}
+
+function updateCurrentPriceDot(state) {
+  if (!state?.currentPriceDot) return;
+
+  const points = dataBySymbol.get(state.symbol) || [];
+  const last = points[points.length - 1];
+
+  if (!last) {
+    state.currentPriceDot.classList.add('hidden');
+    return;
+  }
+
+  const x = state.chart.timeScale().timeToCoordinate(last.time);
+  const y = state.series.priceToCoordinate(last.value);
+
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    state.currentPriceDot.classList.add('hidden');
+    return;
+  }
+
+  state.currentPriceDot.style.left = `${x}px`;
+  state.currentPriceDot.style.top = `${y}px`;
+  state.currentPriceDot.classList.remove('hidden');
+}
+
+function scheduleCurrentPriceDot(state) {
+  if (!state || state.currentPriceDotFrame) return;
+
+  state.currentPriceDotFrame = requestAnimationFrame(() => {
+    state.currentPriceDotFrame = null;
+    updateCurrentPriceDot(state);
+  });
 }
 
 function chartOptions() {
@@ -208,6 +246,7 @@ function createTile(symbol) {
     </header>
     <div class="chartBody">
       <div class="emptyState">Esperando primeros ticks…</div>
+      <div class="currentPriceDot hidden" aria-hidden="true"></div>
     </div>
   `;
 
@@ -218,6 +257,7 @@ function createTile(symbol) {
   const lastPrice = tile.querySelector('.lastPrice');
   const pointsCount = tile.querySelector('.pointsCount');
   const focusBtn = tile.querySelector('.focusBtn');
+  const currentPriceDot = tile.querySelector('.currentPriceDot');
 
   const chart = createChart(chartBody, chartOptions());
   const series = chart.addSeries(LineSeries, {
@@ -268,13 +308,38 @@ function createTile(symbol) {
       height: Math.max(1, Math.floor(rect.height)),
     });
     drawingLayer.resize();
+
     const state = chartStates.get(symbol);
-    if (state) centerLiveWindow(state, true);
+    if (state) {
+      const focusedManualView =
+        focusSymbol === symbol && state.manualViewUntil === Number.POSITIVE_INFINITY;
+
+      // No pisar el zoom elegido por el usuario mientras está ampliado.
+      if (!focusedManualView) centerLiveWindow(state, true);
+      scheduleCurrentPriceDot(state);
+    }
   });
   resizeObserver.observe(chartBody);
 
   chartBody.addEventListener('wheel', () => pauseLiveFollow(symbol), { passive: true });
-  chartBody.addEventListener('pointerdown', () => pauseLiveFollow(symbol));
+
+  let dragStart = null;
+  chartBody.addEventListener('pointerdown', (event) => {
+    if (selectedTool !== 'cursor') return;
+    dragStart = { x: event.clientX, y: event.clientY };
+  });
+  chartBody.addEventListener('pointermove', (event) => {
+    if (!dragStart || selectedTool !== 'cursor') return;
+    const dx = event.clientX - dragStart.x;
+    const dy = event.clientY - dragStart.y;
+    if (Math.hypot(dx, dy) >= 5) {
+      pauseLiveFollow(symbol);
+      dragStart = null;
+    }
+  });
+  chartBody.addEventListener('pointerup', () => { dragStart = null; });
+  chartBody.addEventListener('pointercancel', () => { dragStart = null; });
+  chartBody.addEventListener('pointerleave', () => { dragStart = null; });
 
   const activate = () => setActiveSymbol(symbol);
   tile.addEventListener('pointerdown', (event) => {
@@ -292,7 +357,7 @@ function createTile(symbol) {
     toggleFocus(symbol);
   });
 
-  chartStates.set(symbol, {
+  const state = {
     symbol,
     meta,
     tile,
@@ -301,15 +366,29 @@ function createTile(symbol) {
     lastPrice,
     pointsCount,
     focusBtn,
+    currentPriceDot,
+    currentPriceDotFrame: null,
     chart,
     series,
     drawingLayer,
     resizeObserver,
     manualViewUntil: 0,
-  });
+    visibleRangeHandler: null,
+  };
+
+  state.visibleRangeHandler = () => {
+    drawingLayer.scheduleRender();
+    scheduleCurrentPriceDot(state);
+  };
+
+  chart.timeScale().subscribeVisibleLogicalRangeChange(state.visibleRangeHandler);
+  chartStates.set(symbol, state);
 
   if (cached.length) {
-    setTimeout(() => centerLiveWindow(chartStates.get(symbol), true), 30);
+    setTimeout(() => {
+      centerLiveWindow(state, true);
+      scheduleCurrentPriceDot(state);
+    }, 30);
   }
 }
 
@@ -351,7 +430,22 @@ function setTool(tool) {
 
 function toggleFocus(symbol) {
   setActiveSymbol(symbol);
-  focusSymbol = focusSymbol === symbol ? null : symbol;
+
+  const enteringFocus = focusSymbol !== symbol;
+  focusSymbol = enteringFocus ? symbol : null;
+
+  // Al entrar se parte de la ventana centrada. Luego, si el usuario cambia el
+  // zoom o desplaza el gráfico, esa vista queda fija. Al volver al mosaico se
+  // restaura el seguimiento normal con pausa temporal de 8 segundos.
+  if (enteringFocus) {
+    const focusedState = chartStates.get(symbol);
+    if (focusedState) focusedState.manualViewUntil = 0;
+  } else {
+    chartStates.forEach((state) => {
+      state.manualViewUntil = 0;
+    });
+  }
+
   workspace.classList.toggle('focusMode', Boolean(focusSymbol));
   backMosaicBtn.classList.toggle('hidden', !focusSymbol);
 
@@ -369,6 +463,7 @@ function toggleFocus(symbol) {
         state.chart.applyOptions({ width: rect.width, height: rect.height });
         state.drawingLayer.resize();
         centerLiveWindow(state, true);
+        scheduleCurrentPriceDot(state);
       }
     });
   }, 60);
@@ -403,6 +498,7 @@ function addTick({ symbol, epoch, quote }) {
   state.emptyState.classList.add('hidden');
   state.tile.classList.add('hasData');
   state.drawingLayer.scheduleRender();
+  scheduleCurrentPriceDot(state);
 
   centerLiveWindow(state);
   scheduleSave(symbol);
@@ -466,6 +562,10 @@ window.addEventListener('beforeunload', () => {
   feed.destroy();
   chartStates.forEach((state) => {
     state.resizeObserver.disconnect();
+    if (state.visibleRangeHandler) {
+      state.chart.timeScale().unsubscribeVisibleLogicalRangeChange(state.visibleRangeHandler);
+    }
+    if (state.currentPriceDotFrame) cancelAnimationFrame(state.currentPriceDotFrame);
     state.drawingLayer.destroy();
     state.chart.remove();
   });

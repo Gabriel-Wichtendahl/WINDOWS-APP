@@ -204,6 +204,22 @@ button:active {
   background: #10131c;
 }
 
+
+.currentPriceDot {
+  position: absolute;
+  z-index: 4;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f4f6fb;
+  border: 2px solid #10131c;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.72),
+    0 0 8px rgba(255, 255, 255, 0.35);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 .emptyState {
   position: absolute;
   z-index: 3;
