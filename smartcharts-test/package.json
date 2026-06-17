@@ -1,7 +1,7 @@
 {
-  "name": "deriv-5-graficos-livianos",
-  "version": "0.2.0",
-  "description": "Electron con cinco gráficos Deriv livianos, una sola conexión y herramientas de dibujo.",
+  "name": "deriv-5-graficos-ic-integrado",
+  "version": "0.3.0",
+  "description": "Cinco gráficos livianos Deriv con dibujo y panel IC DEMO/REAL.",
   "main": "main.js",
   "scripts": {
     "start": "npm run build:web && electron .",
@@ -21,8 +21,8 @@
     "webpack-cli": "6.0.1"
   },
   "build": {
-    "appId": "com.gabriel.deriv5graficoslivianos",
-    "productName": "Deriv 5 Graficos Livianos",
+    "appId": "com.gabriel.deriv5graficosic",
+    "productName": "Deriv 5 Graficos IC",
     "directories": {
       "output": "dist"
     },

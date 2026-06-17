@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Deriv 5 Gráficos Livianos</title>
+  <title>Deriv 5 Gráficos + IC</title>
 </head>
 <body>
   <div id="app" class="appShell">
     <header class="appTopbar">
       <div>
-        <h1>5 gráficos Deriv — versión liviana</h1>
-        <p id="connectionStatus" class="disconnected">Conectando datos…</p>
+        <h1>5 gráficos Deriv + panel IC</h1>
+        <p id="connectionStatus" class="disconnected">Conectando precios…</p>
       </div>
       <div class="topActions">
         <button id="backMosaicBtn" class="hidden">Volver al mosaico</button>
@@ -28,29 +28,208 @@
           <strong id="selectedSymbol">R_10</strong>
         </div>
 
-        <section class="toolsSection">
-          <h3>Herramientas de dibujo</h3>
-          <div class="toolGrid">
-            <button class="toolBtn active" data-tool="cursor" title="Mover y hacer zoom">↖ Cursor</button>
-            <button class="toolBtn" data-tool="hline" title="Línea horizontal">━ Horizontal</button>
-            <button class="toolBtn" data-tool="trend" title="Línea de tendencia">╱ Tendencia</button>
-            <button class="toolBtn" data-tool="rect" title="Zona rectangular">▭ Zona</button>
-          </div>
-          <div class="toolGrid secondaryTools">
-            <button id="undoBtn">↶ Deshacer</button>
-            <button id="clearDrawingsBtn">🗑 Borrar todo</button>
-          </div>
-          <p id="drawingHint" class="hint">Cursor activo: podés mover y ampliar el gráfico.</p>
-        </section>
+        <div class="panelTabs" role="tablist">
+          <button class="panelTabBtn active" data-panel-tab="drawingPanel">Dibujo</button>
+          <button class="panelTabBtn" data-panel-tab="tradePanel">Operar</button>
+        </div>
 
-        <section class="infoSection">
-          <h3>Funcionamiento</h3>
-          <p>Los cinco gráficos usan una sola conexión de precios en vivo. No descargan historial al iniciar, evitando el límite de Deriv.</p>
-          <p>En el primer arranque las líneas se forman con los ticks nuevos. Los datos recientes quedan guardados localmente para la próxima apertura.</p>
-        </section>
+        <div id="drawingPanel" class="panelPane">
+          <section class="toolsSection">
+            <h3>Herramientas de dibujo</h3>
+            <div class="toolGrid">
+              <button class="toolBtn active" data-tool="cursor" title="Mover y hacer zoom">↖ Cursor</button>
+              <button class="toolBtn" data-tool="hline" title="Línea horizontal">━ Horizontal</button>
+              <button class="toolBtn" data-tool="trend" title="Línea de tendencia">╱ Tendencia</button>
+              <button class="toolBtn" data-tool="rect" title="Zona rectangular">▭ Zona</button>
+            </div>
+            <div class="toolGrid secondaryTools">
+              <button id="undoBtn">↶ Deshacer</button>
+              <button id="clearDrawingsBtn">🗑 Borrar todo</button>
+            </div>
+            <p id="drawingHint" class="hint">Cursor activo: podés mover y ampliar el gráfico.</p>
+          </section>
 
-        <div class="testNotice">
-          Esta versión prueba estabilidad, mosaico, ampliación y dibujos. Todavía no ejecuta operaciones ni reemplaza el panel IC.
+          <section class="infoSection">
+            <h3>Funcionamiento</h3>
+            <p>En mosaico, al mover o cambiar el zoom espera 8 segundos y vuelve a la ventana actual.</p>
+            <p>En Ampliar, el zoom y desplazamiento manual quedan fijos hasta volver al mosaico.</p>
+          </section>
+        </div>
+
+        <div id="tradePanel" class="panelPane hidden">
+          <div id="electronWarning" class="tradeWarning hidden">
+            Esta parte necesita el ejecutable de Windows.
+          </div>
+
+          <div class="tradeStatusRow">
+            <span>Cuenta Deriv</span>
+            <strong id="tradeConnectionStatus" class="tradeDisconnected">Desconectada</strong>
+          </div>
+
+          <section class="tradeStatsGrid">
+            <div><span>Cuenta</span><strong id="accountText">DEMO</strong></div>
+            <div><span>Saldo</span><strong id="balanceText">—</strong></div>
+            <div><span>Nivel IC</span><strong id="levelText">—</strong></div>
+            <div><span>Stake 5%</span><strong id="stakeText">—</strong></div>
+            <div class="tradeStatWide"><span>Último</span><strong id="lastResultText">—</strong></div>
+          </section>
+
+          <section class="tradeCard">
+            <div class="tradeField">
+              <label for="modeSelect">Tipo de operación</label>
+              <select id="modeSelect">
+                <option value="rise_fall">Rise / Fall</option>
+                <option value="higher_lower">Higher / Lower automático</option>
+              </select>
+            </div>
+
+            <div class="tradeFieldGrid">
+              <div class="tradeField">
+                <label for="durationInput">Duración</label>
+                <input id="durationInput" type="number" value="1" min="1" />
+              </div>
+              <div class="tradeField">
+                <label for="durationUnitSelect">Unidad</label>
+                <select id="durationUnitSelect">
+                  <option value="m">Minutos</option>
+                  <option value="t">Ticks</option>
+                  <option value="s">Segundos</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="barrierWrap" class="autoBarrierBox hidden">
+              <div class="targetRow">
+                <div class="tradeField">
+                  <label for="targetReturnInput">Ganancia neta objetivo</label>
+                  <div class="percentInputWrap">
+                    <input id="targetReturnInput" type="number" value="120" min="1" step="1" />
+                    <span>%</span>
+                  </div>
+                </div>
+                <div class="engineBadge">
+                  <span>Auto-barrera</span>
+                  <strong>ACTIVA</strong>
+                </div>
+              </div>
+
+              <div class="liveQuotes">
+                <div class="liveQuote higherQuote">
+                  <span>HIGHER</span>
+                  <strong id="higherPctText">Calculando…</strong>
+                  <small id="higherBarrierText">Buscando barrera</small>
+                </div>
+                <div class="liveQuote lowerQuote">
+                  <span>LOWER</span>
+                  <strong id="lowerPctText">Calculando…</strong>
+                  <small id="lowerBarrierText">Buscando barrera</small>
+                </div>
+              </div>
+              <p id="barrierEngineStatus" class="hint">Conectá una cuenta para iniciar el cálculo.</p>
+            </div>
+
+            <div class="tradeActionGrid">
+              <button id="buyBtn" class="tradeAction buy" disabled>
+                COMPRA
+                <span>CALL / RISE</span>
+              </button>
+              <button id="sellBtn" class="tradeAction sell" disabled>
+                VENTA
+                <span>PUT / FALL</span>
+              </button>
+            </div>
+          </section>
+
+          <details class="tradeDetails" open>
+            <summary>Conexión DEMO / REAL</summary>
+
+            <div class="tradeField">
+              <label for="appIdInput">Client ID / App ID Deriv</label>
+              <input id="appIdInput" type="text" placeholder="Pegá el ID completo" autocomplete="off" spellcheck="false" />
+            </div>
+
+            <div class="tradeField">
+              <label for="redirectUriInput">Redirect URL registrada</label>
+              <input id="redirectUriInput" type="text" value="https://gabriel-wichtendahl.github.io/PWA-Windows/callback.html" autocomplete="off" spellcheck="false" />
+            </div>
+
+            <button id="oauthLoginBtn" class="oauthBtn">Login Deriv OAuth</button>
+            <p id="oauthStatus" class="hint">Autoriza la aplicación desde Deriv.</p>
+
+            <div class="tradeField">
+              <label for="accountModeSelect">Modo de cuenta</label>
+              <select id="accountModeSelect">
+                <option value="demo">DEMO / Virtual</option>
+                <option value="real">REAL</option>
+              </select>
+            </div>
+            <p id="accountWarning" class="hint demoHint">Modo demo activo.</p>
+
+            <div class="tradeFieldGrid">
+              <div class="tradeField">
+                <label for="demoAccountIdInput">Account ID DEMO</label>
+                <input id="demoAccountIdInput" type="text" placeholder="DOT..." autocomplete="off" />
+              </div>
+              <div class="tradeField">
+                <label for="realAccountIdInput">Account ID REAL</label>
+                <input id="realAccountIdInput" type="text" placeholder="DOT..." autocomplete="off" />
+              </div>
+            </div>
+
+            <div class="tradeField">
+              <label for="demoTokenInput">Token DEMO / OAuth</label>
+              <input id="demoTokenInput" type="password" placeholder="Bearer/PAT/OAuth token" autocomplete="off" />
+            </div>
+
+            <div class="tradeField">
+              <label for="realTokenInput">Token REAL / OAuth</label>
+              <input id="realTokenInput" type="password" placeholder="Bearer/PAT/OAuth token" autocomplete="off" />
+            </div>
+
+            <div class="tradeButtonRow">
+              <button id="accountsBtn">Buscar cuentas</button>
+              <button id="connectBtn" class="primaryTradeBtn">Conectar DEMO</button>
+            </div>
+            <div id="accountsBox" class="accountsBox hidden"></div>
+          </details>
+
+          <details class="tradeDetails">
+            <summary>Reglas IC</summary>
+            <div class="tradeFieldGrid">
+              <div class="tradeField">
+                <label for="stepInput">Paso nivel</label>
+                <input id="stepInput" type="number" value="105" min="1" />
+              </div>
+              <div class="tradeField">
+                <label for="maxInput">Máximo</label>
+                <input id="maxInput" type="number" value="2000" min="1" />
+              </div>
+            </div>
+            <div class="tradeField">
+              <label for="pctInput">Porcentaje stake</label>
+              <input id="pctInput" type="number" value="5" min="0.1" step="0.1" />
+            </div>
+            <p class="hint">Stake = 5% del escalón IC activo. Si baja el saldo, vuelve al escalón anterior.</p>
+          </details>
+
+          <section class="tradeLogCard">
+            <div class="tradeLogHeader">
+              <strong>Registro</strong>
+              <button id="clearLogBtn">Limpiar</button>
+            </div>
+            <div id="log"></div>
+          </section>
+
+          <select id="symbolSelect" class="hidden" aria-hidden="true">
+            <option value="R_10">R_10</option>
+            <option value="R_25">R_25</option>
+            <option value="R_50">R_50</option>
+            <option value="R_75">R_75</option>
+            <option value="R_100">R_100</option>
+          </select>
+          <div id="manualSymbolWrap" class="hidden">
+            <input id="manualSymbolInput" type="text" />
+          </div>
         </div>
       </aside>
     </main>

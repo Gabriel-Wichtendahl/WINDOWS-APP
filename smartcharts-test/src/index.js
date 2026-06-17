@@ -7,6 +7,7 @@ import {
 import './styles.css';
 import { DerivLiveFeed, SYMBOLS } from './feed';
 import { DrawingLayer } from './drawings';
+import './trading';
 
 const SYMBOL_META = {
   R_10: { label: 'Volatility 10', precision: 3 },
@@ -33,6 +34,8 @@ const drawingHint = document.getElementById('drawingHint');
 const undoBtn = document.getElementById('undoBtn');
 const clearDrawingsBtn = document.getElementById('clearDrawingsBtn');
 const toolButtons = [...document.querySelectorAll('.toolBtn')];
+const panelTabButtons = [...document.querySelectorAll('.panelTabBtn')];
+const panelPanes = [...document.querySelectorAll('.panelPane')];
 
 const chartStates = new Map();
 const dataBySymbol = new Map();
@@ -403,6 +406,12 @@ function setActiveSymbol(symbol) {
   activeSymbol = symbol;
   selectedSymbolText.textContent = symbol;
 
+  const tradingSymbolSelect = document.getElementById('symbolSelect');
+  if (tradingSymbolSelect) tradingSymbolSelect.value = symbol;
+  window.dispatchEvent(new CustomEvent('active-symbol-changed', {
+    detail: { symbol },
+  }));
+
   chartStates.forEach((state, key) => {
     const active = key === symbol;
     state.tile.classList.toggle('active', active);
@@ -415,7 +424,15 @@ function setActiveSymbol(symbol) {
 }
 
 function updateToolButtons() {
-  toolButtons.forEach((button) => {
+  panelTabButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    const panelId = button.dataset.panelTab;
+    panelTabButtons.forEach((item) => item.classList.toggle('active', item === button));
+    panelPanes.forEach((pane) => pane.classList.toggle('hidden', pane.id !== panelId));
+  });
+});
+
+toolButtons.forEach((button) => {
     button.classList.toggle('active', button.dataset.tool === selectedTool);
   });
 }
