@@ -19,6 +19,9 @@ const SYMBOL_META = {
 const MAX_POINTS = 600;
 const CACHE_MAX_AGE_MS = 45 * 60 * 1000;
 const SAVE_EVERY_MS = 5000;
+const LIVE_PAST_SECONDS = 90;
+const LIVE_FUTURE_SECONDS = 30;
+const MANUAL_VIEW_HOLD_MS = 8000;
 
 const chartsGrid = document.getElementById('chartsGrid');
 const workspace = document.getElementById('workspace');
@@ -81,6 +84,46 @@ function scheduleSave(symbol) {
   saveTimers.set(symbol, timer);
 }
 
+function estimatePointsPerSecond(points) {
+  if (!Array.isArray(points) || points.length < 3) return 1;
+
+  const sample = points.slice(-120);
+  const first = sample[0];
+  const last = sample[sample.length - 1];
+  const spanSeconds = Number(last.time) - Number(first.time);
+
+  if (!Number.isFinite(spanSeconds) || spanSeconds <= 0) return 1;
+
+  const rate = (sample.length - 1) / spanSeconds;
+  return Math.min(5, Math.max(0.25, rate));
+}
+
+function centerLiveWindow(state, force = false) {
+  if (!state) return;
+  if (!force && Date.now() < Number(state.manualViewUntil || 0)) return;
+
+  const points = dataBySymbol.get(state.symbol) || [];
+  if (!points.length) return;
+
+  const pointsPerSecond = estimatePointsPerSecond(points);
+  const pastBars = Math.max(20, Math.round(LIVE_PAST_SECONDS * pointsPerSecond));
+  const futureBars = Math.max(8, Math.round(LIVE_FUTURE_SECONDS * pointsPerSecond));
+  const lastIndex = points.length - 1;
+
+  state.chart.timeScale().setVisibleLogicalRange({
+    from: lastIndex - pastBars,
+    to: lastIndex + futureBars,
+  });
+  state.series.priceScale().applyOptions({ autoScale: true });
+  state.drawingLayer.scheduleRender();
+}
+
+function pauseLiveFollow(symbol) {
+  const state = chartStates.get(symbol);
+  if (!state || selectedTool !== 'cursor') return;
+  state.manualViewUntil = Date.now() + MANUAL_VIEW_HOLD_MS;
+}
+
 function chartOptions() {
   return {
     layout: {
@@ -95,14 +138,14 @@ function chartOptions() {
     },
     rightPriceScale: {
       borderColor: 'rgba(111, 121, 151, 0.26)',
-      scaleMargins: { top: 0.12, bottom: 0.12 },
+      scaleMargins: { top: 0.18, bottom: 0.18 },
       minimumWidth: 64,
     },
     timeScale: {
       borderColor: 'rgba(111, 121, 151, 0.26)',
       timeVisible: true,
       secondsVisible: true,
-      rightOffset: 4,
+      rightOffset: 0,
       barSpacing: 5,
       minBarSpacing: 0.4,
       fixLeftEdge: false,
@@ -144,10 +187,10 @@ function chartOptions() {
   };
 }
 
-function createTile(symbol, index) {
+function createTile(symbol) {
   const meta = SYMBOL_META[symbol];
   const tile = document.createElement('section');
-  tile.className = `chartTile ${index === SYMBOLS.length - 1 ? 'wideTile' : ''}`;
+  tile.className = 'chartTile';
   tile.dataset.symbol = symbol;
 
   tile.innerHTML = `
@@ -205,7 +248,7 @@ function createTile(symbol, index) {
     lastPrice.textContent = last.value.toFixed(meta.precision);
     pointsCount.textContent = `${cached.length} puntos`;
     emptyState.classList.add('hidden');
-    setTimeout(() => chart.timeScale().fitContent(), 20);
+    // La ventana en vivo se centra después de registrar el estado del gráfico.
   }
 
   const drawingLayer = new DrawingLayer({
@@ -225,8 +268,13 @@ function createTile(symbol, index) {
       height: Math.max(1, Math.floor(rect.height)),
     });
     drawingLayer.resize();
+    const state = chartStates.get(symbol);
+    if (state) centerLiveWindow(state, true);
   });
   resizeObserver.observe(chartBody);
+
+  chartBody.addEventListener('wheel', () => pauseLiveFollow(symbol), { passive: true });
+  chartBody.addEventListener('pointerdown', () => pauseLiveFollow(symbol));
 
   const activate = () => setActiveSymbol(symbol);
   tile.addEventListener('pointerdown', (event) => {
@@ -257,8 +305,12 @@ function createTile(symbol, index) {
     series,
     drawingLayer,
     resizeObserver,
-    fittedAfterLive: false,
+    manualViewUntil: 0,
   });
+
+  if (cached.length) {
+    setTimeout(() => centerLiveWindow(chartStates.get(symbol), true), 30);
+  }
 }
 
 function setConnectionStatus(ok, text) {
@@ -316,6 +368,7 @@ function toggleFocus(symbol) {
         const rect = state.chartBody.getBoundingClientRect();
         state.chart.applyOptions({ width: rect.width, height: rect.height });
         state.drawingLayer.resize();
+        centerLiveWindow(state, true);
       }
     });
   }, 60);
@@ -351,11 +404,7 @@ function addTick({ symbol, epoch, quote }) {
   state.tile.classList.add('hasData');
   state.drawingLayer.scheduleRender();
 
-  if (!state.fittedAfterLive && points.length >= 12) {
-    state.fittedAfterLive = true;
-    state.chart.timeScale().fitContent();
-  }
-
+  centerLiveWindow(state);
   scheduleSave(symbol);
 }
 
