@@ -3,10 +3,58 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Deriv 5 Gráficos Test</title>
+  <title>Deriv 5 Gráficos Livianos</title>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="app" class="appShell">
+    <header class="appTopbar">
+      <div>
+        <h1>5 gráficos Deriv — versión liviana</h1>
+        <p id="connectionStatus" class="disconnected">Conectando datos…</p>
+      </div>
+      <div class="topActions">
+        <button id="backMosaicBtn" class="hidden">Volver al mosaico</button>
+        <button id="pinBtn">📌 Encima: OFF</button>
+      </div>
+    </header>
+
+    <main id="workspace" class="workspace">
+      <div id="chartsGrid" class="chartsGrid"></div>
+
+      <aside class="sidePanel">
+        <h2>Gráfico activo</h2>
+        <div class="selectedBox">
+          <span>Par seleccionado</span>
+          <strong id="selectedSymbol">R_10</strong>
+        </div>
+
+        <section class="toolsSection">
+          <h3>Herramientas de dibujo</h3>
+          <div class="toolGrid">
+            <button class="toolBtn active" data-tool="cursor" title="Mover y hacer zoom">↖ Cursor</button>
+            <button class="toolBtn" data-tool="hline" title="Línea horizontal">━ Horizontal</button>
+            <button class="toolBtn" data-tool="trend" title="Línea de tendencia">╱ Tendencia</button>
+            <button class="toolBtn" data-tool="rect" title="Zona rectangular">▭ Zona</button>
+          </div>
+          <div class="toolGrid secondaryTools">
+            <button id="undoBtn">↶ Deshacer</button>
+            <button id="clearDrawingsBtn">🗑 Borrar todo</button>
+          </div>
+          <p id="drawingHint" class="hint">Cursor activo: podés mover y ampliar el gráfico.</p>
+        </section>
+
+        <section class="infoSection">
+          <h3>Funcionamiento</h3>
+          <p>Los cinco gráficos usan una sola conexión de precios en vivo. No descargan historial al iniciar, evitando el límite de Deriv.</p>
+          <p>En el primer arranque las líneas se forman con los ticks nuevos. Los datos recientes quedan guardados localmente para la próxima apertura.</p>
+        </section>
+
+        <div class="testNotice">
+          Esta versión prueba estabilidad, mosaico, ampliación y dibujos. Todavía no ejecuta operaciones ni reemplaza el panel IC.
+        </div>
+      </aside>
+    </main>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>

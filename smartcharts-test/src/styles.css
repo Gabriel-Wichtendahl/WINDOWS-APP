@@ -1,45 +1,105 @@
 :root {
   color-scheme: dark;
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #0d1018;
-  color: #f4f6fb;
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: #0f1118;
+  color: #eef1f7;
 }
-* { box-sizing: border-box; }
-html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-button { font: inherit; }
-.appShell { height: 100%; display: flex; flex-direction: column; background: #0d1018; }
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #0f1118;
+}
+
+button {
+  border: 1px solid #30374b;
+  border-radius: 8px;
+  background: #1a1f2c;
+  color: #e9ecf4;
+  padding: 8px 11px;
+  cursor: pointer;
+  font: inherit;
+}
+
+button:hover {
+  background: #242b3c;
+  border-color: #48516b;
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.appShell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .appTopbar {
-  height: 58px;
-  flex: 0 0 58px;
+  min-height: 66px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #252b3b;
+  background: #141721;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
-  border-bottom: 1px solid #2a3040;
-  background: #141824;
+  gap: 16px;
+  flex: 0 0 auto;
 }
-.appTopbar h1 { margin: 0; font-size: 18px; }
-.appTopbar p { margin: 2px 0 0; font-size: 12px; }
-.connected { color: #35d07f; }
-.disconnected { color: #ffbf4a; }
-.topActions { display: flex; gap: 8px; }
-.topActions button, .chartHeader button {
-  color: #e9edf7;
-  background: #242a38;
-  border: 1px solid #3a4255;
-  border-radius: 8px;
-  padding: 7px 10px;
-  cursor: pointer;
+
+.appTopbar h1 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0.1px;
 }
-.topActions .pinOn { background: #153d2a; border-color: #2b8a58; }
-.workspace {
-  min-height: 0;
-  flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 270px;
+
+.appTopbar p {
+  margin: 5px 0 0;
+  font-size: 12px;
+}
+
+.connected {
+  color: #39d98a;
+}
+
+.disconnected {
+  color: #ff7070;
+}
+
+.topActions {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 8px;
 }
+
+.pinOn {
+  background: #263b32;
+  border-color: #3c7259;
+  color: #75e2a8;
+}
+
+.workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 286px;
+  gap: 10px;
+  padding: 10px;
+}
+
 .chartsGrid {
   min-width: 0;
   min-height: 0;
@@ -48,61 +108,257 @@ button { font: inherit; }
   grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
+
 .chartTile {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  border: 1px solid #262d3e;
+  border-radius: 8px;
+  background: #10131c;
   display: flex;
   flex-direction: column;
-  background: #181c25;
-  border: 1px solid #2b3243;
-  border-radius: 10px;
+  position: relative;
 }
-.chartTile:nth-child(5) { grid-column: 1 / span 2; }
-.chartTile.active { border-color: #57d79b; box-shadow: 0 0 0 1px rgba(87,215,155,.32); }
+
+.chartTile.active {
+  border-color: #a98b35;
+  box-shadow: 0 0 0 1px rgba(255, 205, 74, 0.22);
+}
+
+.chartTile.wideTile {
+  grid-column: 1 / span 2;
+}
+
 .chartHeader {
-  height: 37px;
-  flex: 0 0 37px;
+  height: 40px;
+  padding: 6px 8px 6px 10px;
+  border-bottom: 1px solid #242a39;
+  background: #161a25;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 8px 4px 11px;
-  background: #161a23;
-  border-bottom: 1px solid #292f3d;
+  gap: 10px;
+  flex: 0 0 auto;
 }
-.chartHeader strong { font-size: 13px; }
-.chartHeader span { margin-left: 7px; color: #858da0; font-size: 10px; }
-.chartHeaderActions { display: flex; align-items: center; gap: 6px; }
-.chartHeaderActions .activeTag { color: #56daa0; font-weight: 800; font-size: 9px; }
-.chartHeader button { padding: 4px 7px; font-size: 10px; }
-.chartBody { position: relative; flex: 1; min-height: 0; }
-.chartBody > .smartcharts { position: absolute !important; inset: 0; height: 100% !important; }
+
+.symbolTitle {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.symbolTitle strong {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.symbolTitle span {
+  color: #7f879a;
+  font-size: 10px;
+}
+
+.chartStats {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.liveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #596074;
+  flex: 0 0 auto;
+}
+
+.hasData .liveDot {
+  background: #39d98a;
+  box-shadow: 0 0 8px rgba(57, 217, 138, 0.6);
+}
+
+.lastPrice {
+  min-width: 66px;
+  text-align: right;
+  font-size: 12px;
+  color: #f4f5f9;
+}
+
+.pointsCount {
+  min-width: 54px;
+  color: #7f879a;
+  font-size: 9px;
+  text-align: right;
+}
+
+.focusBtn {
+  padding: 5px 8px;
+  font-size: 10px;
+}
+
+.chartBody {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: #10131c;
+}
+
+.emptyState {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 7px 10px;
+  border-radius: 7px;
+  background: rgba(22, 26, 37, 0.78);
+  color: #8f97aa;
+  font-size: 11px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.drawingCanvas {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  display: block;
+}
+
 .sidePanel {
   min-height: 0;
   overflow: auto;
-  padding: 14px;
-  border: 1px solid #2b3243;
-  border-radius: 10px;
+  border: 1px solid #262d3e;
+  border-radius: 8px;
   background: #151925;
+  padding: 13px;
 }
-.sidePanel h2 { margin: 0 0 12px; font-size: 18px; }
-.sidePanel p, .sidePanel li { color: #aeb6c8; font-size: 13px; line-height: 1.45; }
-.sidePanel ol { padding-left: 20px; }
-.selectedBox { padding: 12px; border-radius: 10px; background: #0f1320; border: 1px solid #30394d; }
-.selectedBox span { display: block; font-size: 11px; color: #929bad; }
-.selectedBox strong { display: block; margin-top: 4px; font-size: 25px; color: #56daa0; }
-.testNotice { margin-top: 18px; padding: 11px; border: 1px solid #745b22; border-radius: 9px; color: #ffd66b; background: #30270f; font-size: 12px; line-height: 1.4; }
-.focusMode .chartsGrid { display: block; }
-.focusMode .chartTile { width: 100%; height: 100%; }
-.focusMode .chartTile:nth-child(5) { grid-column: auto; }
 
-/* Compacta los widgets de SmartCharts para mosaico. */
-.chartBody .smartcharts { font-size: 11px; }
-.chartBody .cq-top-ui-widgets:empty { display: none; }
-.chartBody .sc-toolbar-widget { z-index: 20; }
-.chartBody .ciq-chart-area, .chartBody .ciq-chart, .chartBody .chartContainer { height: 100% !important; }
+.sidePanel h2 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
 
-@media (max-width: 1200px) {
-  .workspace { grid-template-columns: minmax(0, 1fr) 225px; }
-  .sidePanel { padding: 10px; }
+.sidePanel h3 {
+  margin: 0 0 9px;
+  font-size: 12px;
+  color: #cbd0dc;
+}
+
+.selectedBox {
+  border: 1px solid #30384b;
+  border-radius: 8px;
+  background: #10141e;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.selectedBox span {
+  color: #858da0;
+  font-size: 11px;
+}
+
+.selectedBox strong {
+  color: #ffcd4a;
+  font-size: 15px;
+}
+
+.toolsSection,
+.infoSection {
+  margin-top: 13px;
+  padding-top: 12px;
+  border-top: 1px solid #292f40;
+}
+
+.toolGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.toolBtn {
+  min-height: 38px;
+  text-align: left;
+  font-size: 11px;
+}
+
+.toolBtn.active {
+  background: #443a21;
+  border-color: #8e7530;
+  color: #ffd76b;
+}
+
+.secondaryTools {
+  margin-top: 7px;
+}
+
+.secondaryTools button {
+  font-size: 11px;
+}
+
+.hint,
+.infoSection p {
+  color: #8c94a7;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.hint {
+  min-height: 32px;
+  margin: 9px 0 0;
+}
+
+.infoSection p {
+  margin: 7px 0;
+}
+
+.testNotice {
+  margin-top: 13px;
+  border: 1px solid #574a27;
+  border-radius: 8px;
+  background: #2a2518;
+  color: #d9c784;
+  padding: 10px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.workspace.focusMode .chartsGrid {
+  display: block;
+}
+
+.workspace.focusMode .chartTile {
+  height: 100%;
+}
+
+.focusHidden {
+  display: none !important;
+}
+
+@media (max-width: 1220px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) 250px;
+  }
+
+  .pointsCount {
+    display: none;
+  }
+}
+
+@media (max-height: 760px) {
+  .appTopbar {
+    min-height: 56px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+
+  .chartHeader {
+    height: 35px;
+  }
 }

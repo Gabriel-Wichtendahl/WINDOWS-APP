@@ -8,17 +8,17 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1580,
     height: 930,
-    minWidth: 1150,
-    minHeight: 700,
-    title: 'Deriv 5 Gráficos — prueba SmartCharts',
-    backgroundColor: '#10131d',
+    minWidth: 1100,
+    minHeight: 680,
+    title: 'Deriv 5 Gráficos Livianos',
+    backgroundColor: '#0f1118',
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
-    }
+      sandbox: false,
+    },
   });
 
   mainWindow.loadFile(path.join(__dirname, 'build', 'index.html'));
