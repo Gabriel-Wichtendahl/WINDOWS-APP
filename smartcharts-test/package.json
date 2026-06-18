@@ -1,7 +1,7 @@
 {
   "name": "deriv-5-graficos-ic-integrado",
-  "version": "0.4.1",
-  "description": "Deriv IC dos modos con detección Rise/Fall corregida y estado claro de habilitación.",
+  "version": "0.4.2",
+  "description": "Deriv IC dos modos con Higher/Lower por CALL/PUT con barrera y propuestas puntuales.",
   "main": "main.js",
   "scripts": {
     "start": "npm run build:web && electron .",
