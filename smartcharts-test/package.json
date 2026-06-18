@@ -1,7 +1,7 @@
 {
   "name": "deriv-5-graficos-ic-integrado",
-  "version": "0.4.2",
-  "description": "Deriv IC dos modos con Higher/Lower por CALL/PUT con barrera y propuestas puntuales.",
+  "version": "0.4.3",
+  "description": "Deriv IC dos modos con cálculo Higher/Lower estable en modo navegador.",
   "main": "main.js",
   "scripts": {
     "start": "npm run build:web && electron .",

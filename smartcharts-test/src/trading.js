@@ -897,6 +897,7 @@ async function startBarrierEngine(reason = 'configuración') {
   if (!isAuthorized || els.modeSelect.value !== 'higher_lower') return;
   const symbol = getSymbol();
   if (!symbol) return;
+  lastRestartRequestedSymbol = symbol;
 
   const generation = ++barrierEngine.generation;
   barrierEngine.running = true;
@@ -986,6 +987,7 @@ async function stopBarrierEngine() {
   updateUi();
 }
 
+let lastRestartRequestedSymbol = null;
 let restartTimer = null;
 function scheduleMarketRestart(reason) {
   if (restartTimer) clearTimeout(restartTimer);
@@ -1274,9 +1276,22 @@ window.addEventListener('browser-state-updated', (event) => {
 
 window.addEventListener('active-symbol-changed', (event) => {
   const symbol = String(event.detail?.symbol || '').trim();
-  if (symbol && els.symbolSelect) els.symbolSelect.value = symbol;
+  if (!symbol) return;
+
+  const previousSymbol = String(els.symbolSelect?.value || '').trim();
+  if (els.symbolSelect) els.symbolSelect.value = symbol;
   saveSettings();
-  if (isAuthorized) scheduleMarketRestart('cambió el gráfico activo');
+
+  // La extensión puede enviar lecturas periódicas. No reiniciar Higher/Lower
+  // si el mercado recibido coincide con el que ya está calculado.
+  if (
+    isAuthorized &&
+    symbol !== previousSymbol &&
+    symbol !== lastRestartRequestedSymbol
+  ) {
+    lastRestartRequestedSymbol = symbol;
+    scheduleMarketRestart('cambió el mercado activo');
+  }
 });
 
 (function initTradingPanel() {

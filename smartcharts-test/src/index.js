@@ -91,7 +91,15 @@ function applyBrowserState(state) {
   browserContractText.textContent = contractModeLabel(latestBrowserState?.contractMode);
   browserPageText.textContent = latestBrowserState?.title || 'Abrí Deriv y seleccioná el mercado.';
 
-  if (appMode === 'browser' && latestBrowserState?.symbol && chartStates.has(latestBrowserState.symbol)) {
+  if (
+    appMode === 'browser' &&
+    latestBrowserState?.symbol &&
+    chartStates.has(latestBrowserState.symbol) &&
+    activeSymbol !== latestBrowserState.symbol
+  ) {
+    // Reiniciar el motor solamente cuando realmente cambia el mercado.
+    // La extensión actualiza su lectura cada segundo, pero eso no debe volver
+    // a calcular Higher/Lower si el símbolo sigue siendo el mismo.
     setActiveSymbol(latestBrowserState.symbol);
   }
 
@@ -496,14 +504,21 @@ function setConnectionStatus(ok, text) {
 
 function setActiveSymbol(symbol) {
   if (!chartStates.has(symbol)) return;
+
+  const symbolChanged = activeSymbol !== symbol;
   activeSymbol = symbol;
   selectedSymbolText.textContent = symbol;
 
   const tradingSymbolSelect = document.getElementById('symbolSelect');
   if (tradingSymbolSelect) tradingSymbolSelect.value = symbol;
-  window.dispatchEvent(new CustomEvent('active-symbol-changed', {
-    detail: { symbol },
-  }));
+
+  // Evita reiniciar el cálculo de barreras en cada lectura periódica de la
+  // extensión. Solo avisamos al panel IC cuando el par cambió de verdad.
+  if (symbolChanged) {
+    window.dispatchEvent(new CustomEvent('active-symbol-changed', {
+      detail: { symbol },
+    }));
+  }
 
   chartStates.forEach((state, key) => {
     const active = key === symbol;
