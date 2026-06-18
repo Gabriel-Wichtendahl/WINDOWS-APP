@@ -1,7 +1,7 @@
 {
   "name": "deriv-5-graficos-ic-integrado",
-  "version": "0.4.0",
-  "description": "Deriv IC con cinco gráficos y modo navegador sincronizado por extensión local.",
+  "version": "0.4.1",
+  "description": "Deriv IC dos modos con detección Rise/Fall corregida y estado claro de habilitación.",
   "main": "main.js",
   "scripts": {
     "start": "npm run build:web && electron .",

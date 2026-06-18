@@ -877,3 +877,30 @@ body.browserMode .tradeAction {
 body.browserMode .tradeStatsGrid {
   grid-template-columns: 1fr 1fr;
 }
+
+
+.tradeReadyHint {
+  margin: 8px 0 0;
+  padding: 7px 8px;
+  border-radius: 7px;
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.tradeReadyHint.warn {
+  color: #e4c87b;
+  background: rgba(104, 82, 28, 0.22);
+  border: 1px solid rgba(181, 143, 49, 0.34);
+}
+
+.tradeReadyHint.ready {
+  color: #7ee5ad;
+  background: rgba(35, 104, 69, 0.22);
+  border: 1px solid rgba(61, 158, 106, 0.38);
+}
+
+body.browserMode .connectionDetails[open] {
+  max-height: 340px;
+  overflow: auto;
+}

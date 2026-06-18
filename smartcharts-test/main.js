@@ -48,6 +48,7 @@ function normalizeBrowserState(input = {}) {
     symbol,
     label: String(input.label || '').slice(0, 80),
     contractMode,
+    contractConfidence: Math.max(0, Math.min(5, Number(input.contractConfidence || 0))),
     title: String(input.title || '').slice(0, 180),
     url: String(input.url || '').slice(0, 600),
     receivedAt: Date.now()

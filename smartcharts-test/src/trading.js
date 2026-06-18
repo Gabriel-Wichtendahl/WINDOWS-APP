@@ -35,6 +35,7 @@ const els = {
   durationUnitSelect: $('durationUnitSelect'),
   buyBtn: $('buyBtn'),
   sellBtn: $('sellBtn'),
+  tradeReadyHint: $('tradeReadyHint'),
   stepInput: $('stepInput'),
   maxInput: $('maxInput'),
   pctInput: $('pctInput'),
@@ -145,7 +146,15 @@ function applyBrowserStateToTrading(state, restart = false) {
     els.symbolSelect.value = state.symbol;
   }
 
-  if (state.contractMode && els.modeSelect.value !== state.contractMode) {
+  // Solo cambiamos automáticamente Rise/Fall o Higher/Lower cuando la
+  // extensión identificó una pestaña/control activo con suficiente confianza.
+  // Así evitamos que texto oculto de Higher/Lower pise Rise/Fall.
+  const confidence = Number(state.contractConfidence || 0);
+  if (
+    state.contractMode &&
+    confidence >= 3 &&
+    els.modeSelect.value !== state.contractMode
+  ) {
     els.modeSelect.value = state.contractMode;
     saveSettings();
     updateUi();
@@ -548,9 +557,32 @@ function updateUi() {
   els.levelText.textContent = balance === null ? '—' : `${level}`;
   els.stakeText.textContent = balance === null ? '—' : `${stake.toFixed(2)} ${currency}`;
 
-  const canTrade = isAuthorized && !isSendingOrder && balance !== null;
+  const browserReady = !window.derivBrowserMode || browserStateIsFresh(window.derivBrowserState);
+  const canTrade = isAuthorized && !isSendingOrder && balance !== null && browserReady;
   els.buyBtn.disabled = !canTrade;
   els.sellBtn.disabled = !canTrade;
+
+  document.body.classList.toggle('tradeAuthorized', isAuthorized && balance !== null);
+  document.body.classList.toggle('tradeReady', canTrade);
+
+  if (els.tradeReadyHint) {
+    if (!isAuthorized) {
+      els.tradeReadyHint.textContent = 'Conectá una cuenta DEMO o REAL para habilitar Compra y Venta.';
+      els.tradeReadyHint.className = 'tradeReadyHint warn';
+    } else if (balance === null) {
+      els.tradeReadyHint.textContent = 'Cuenta conectada. Esperando el saldo de Deriv…';
+      els.tradeReadyHint.className = 'tradeReadyHint warn';
+    } else if (!browserReady) {
+      els.tradeReadyHint.textContent = 'Esperando una lectura actual de la pestaña activa de Deriv.';
+      els.tradeReadyHint.className = 'tradeReadyHint warn';
+    } else if (isSendingOrder) {
+      els.tradeReadyHint.textContent = 'Enviando la orden a Deriv…';
+      els.tradeReadyHint.className = 'tradeReadyHint warn';
+    } else {
+      els.tradeReadyHint.textContent = `${getSymbol()} listo para operar en ${getAccountLabel(activeAccountMode)}.`;
+      els.tradeReadyHint.className = 'tradeReadyHint ready';
+    }
+  }
 
   const mode = els.modeSelect.value;
   els.barrierWrap.classList.toggle('hidden', mode !== 'higher_lower');

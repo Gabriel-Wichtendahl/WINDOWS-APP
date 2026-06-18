@@ -117,8 +117,9 @@ async function setAppMode(mode) {
   if (appMode === 'browser') {
     if (focusSymbol) toggleFocus(focusSymbol);
     showPanel('tradePanel');
+    const tradeAuthorized = document.body.classList.contains('tradeAuthorized');
     document.querySelectorAll('.tradeDetails').forEach((details) => {
-      details.open = false;
+      details.open = !tradeAuthorized && details.classList.contains('connectionDetails');
     });
     try { await window.electronAPI?.setWindowMode?.('compact'); } catch (_) {}
     try { applyBrowserState(await window.electronAPI?.getBrowserState?.()); } catch (_) {}
