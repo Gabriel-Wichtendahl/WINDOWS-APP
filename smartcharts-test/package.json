@@ -1,7 +1,7 @@
 {
   "name": "deriv-5-graficos-ic-integrado",
-  "version": "0.3.0",
-  "description": "Cinco gráficos livianos Deriv con dibujo y panel IC DEMO/REAL.",
+  "version": "0.4.0",
+  "description": "Deriv IC con cinco gráficos y modo navegador sincronizado por extensión local.",
   "main": "main.js",
   "scripts": {
     "start": "npm run build:web && electron .",
@@ -21,8 +21,8 @@
     "webpack-cli": "6.0.1"
   },
   "build": {
-    "appId": "com.gabriel.deriv5graficosic",
-    "productName": "Deriv 5 Graficos IC",
+    "appId": "com.gabriel.derivicdosmodos",
+    "productName": "Deriv IC Dos Modos",
     "directories": {
       "output": "dist"
     },

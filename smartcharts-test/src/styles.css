@@ -729,3 +729,151 @@ button:active {
     grid-template-columns: minmax(0, 1fr) 290px;
   }
 }
+
+
+/* Modo navegador compacto */
+.modeToggleBtn {
+  background: #24314d;
+  border-color: #455a86;
+  color: #dce7ff;
+}
+
+.browserSyncCard {
+  margin-top: 10px;
+  border: 1px solid #34415c;
+  border-radius: 9px;
+  background: #101722;
+  padding: 10px;
+}
+
+.browserSyncHead {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.browserSyncHead > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.browserSyncHead strong {
+  font-size: 12px;
+}
+
+.browserSyncHead small,
+.browserPageText {
+  color: #8993a8;
+  font-size: 9px;
+}
+
+.browserSyncDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #6a7080;
+  flex: 0 0 auto;
+}
+
+.browserSyncDot.connected {
+  background: #39d98a;
+  box-shadow: 0 0 9px rgba(57, 217, 138, 0.65);
+}
+
+.browserDetectedGrid {
+  margin-top: 9px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.browserDetectedGrid > div {
+  border: 1px solid #29354b;
+  border-radius: 7px;
+  background: #0d131d;
+  padding: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.browserDetectedGrid span {
+  color: #7f899e;
+  font-size: 8px;
+}
+
+.browserDetectedGrid strong {
+  color: #f0f3f9;
+  font-size: 12px;
+}
+
+.browserPageText {
+  margin: 8px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.browserMode .appTopbar {
+  min-height: 54px;
+  padding: 7px 9px;
+}
+
+body.browserMode .appTopbar h1 {
+  font-size: 13px;
+}
+
+body.browserMode #connectionStatus,
+body.browserMode #backMosaicBtn,
+body.browserMode #pinBtn {
+  display: none !important;
+}
+
+body.browserMode .workspace {
+  display: block;
+  padding: 7px;
+}
+
+body.browserMode .chartsGrid {
+  display: none !important;
+}
+
+body.browserMode .sidePanel {
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+}
+
+body.browserMode .sidePanel > h2 {
+  margin-bottom: 7px;
+  font-size: 13px;
+}
+
+body.browserMode .panelTabs {
+  display: none;
+}
+
+body.browserMode #tradePanel {
+  display: block !important;
+}
+
+body.browserMode #drawingPanel {
+  display: none !important;
+}
+
+body.browserMode .tradeCard,
+body.browserMode .tradeDetails,
+body.browserMode .tradeLogCard {
+  margin-top: 7px;
+}
+
+body.browserMode .tradeAction {
+  min-height: 64px;
+  font-size: 13px;
+}
+
+body.browserMode .tradeStatsGrid {
+  grid-template-columns: 1fr 1fr;
+}

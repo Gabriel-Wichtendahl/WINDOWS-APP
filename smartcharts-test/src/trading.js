@@ -121,8 +121,56 @@ function getAccountLabel(mode = getSelectedAccountMode()) {
 }
 
 function getSymbol() {
+  if (window.derivBrowserMode && window.derivBrowserState?.symbol) {
+    return String(window.derivBrowserState.symbol).trim();
+  }
   const active = String(document.getElementById('selectedSymbol')?.textContent || '').trim();
   return active || String(els.symbolSelect?.value || 'R_10').trim();
+}
+
+function browserStateIsFresh(state, maxAgeMs = 4500) {
+  return Boolean(
+    state?.connected &&
+    state?.derivDetected &&
+    state?.symbol &&
+    Date.now() - Number(state.receivedAt || 0) <= maxAgeMs
+  );
+}
+
+function applyBrowserStateToTrading(state, restart = false) {
+  if (!state) return;
+  window.derivBrowserState = state;
+
+  if (state.symbol && els.symbolSelect) {
+    els.symbolSelect.value = state.symbol;
+  }
+
+  if (state.contractMode && els.modeSelect.value !== state.contractMode) {
+    els.modeSelect.value = state.contractMode;
+    saveSettings();
+    updateUi();
+    if (restart && isAuthorized) scheduleMarketRestart('cambió el contrato detectado en Deriv');
+  }
+}
+
+async function readBrowserStateForOrder() {
+  if (!window.derivBrowserMode) return null;
+  if (!hasElectronApi('getBrowserState')) {
+    throw new Error('No está disponible la lectura de la extensión.');
+  }
+
+  const state = await getElectronApi().getBrowserState();
+  applyBrowserStateToTrading(state, true);
+
+  if (!browserStateIsFresh(state)) {
+    throw new Error('No se detectó una pestaña activa de Deriv. Abrí Deriv y verificá la extensión.');
+  }
+
+  addLog(
+    `Lectura navegador: ${state.symbol} · ${state.contractMode === 'higher_lower' ? 'Higher/Lower' : 'Rise/Fall'}`,
+    'warn'
+  );
+  return state;
 }
 
 function getTargetReturn() {
@@ -962,6 +1010,16 @@ async function buyWithRetry(quote, side) {
 
 async function executeTrade(side) {
   if (!isAuthorized || isSendingOrder) return;
+
+  if (window.derivBrowserMode) {
+    try {
+      await readBrowserStateForOrder();
+    } catch (error) {
+      addLog(error.message, 'err');
+      return;
+    }
+  }
+
   saveSettings();
 
   const mode = els.modeSelect.value;
@@ -1174,6 +1232,12 @@ els.clearLogBtn.addEventListener('click', () => {
   tradeLog = [];
   localStorage.removeItem('tradeLog');
   renderLog();
+});
+
+window.addEventListener('browser-state-updated', (event) => {
+  if (!window.derivBrowserMode) return;
+  const state = event.detail || {};
+  applyBrowserStateToTrading(state, true);
 });
 
 window.addEventListener('active-symbol-changed', (event) => {

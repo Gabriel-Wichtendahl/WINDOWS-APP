@@ -13,6 +13,7 @@
         <p id="connectionStatus" class="disconnected">Conectando precios…</p>
       </div>
       <div class="topActions">
+        <button id="modeToggleBtn" class="modeToggleBtn">Modo navegador</button>
         <button id="backMosaicBtn" class="hidden">Volver al mosaico</button>
         <button id="pinBtn">📌 Encima: OFF</button>
       </div>
@@ -24,13 +25,28 @@
       <aside class="sidePanel">
         <h2>Gráfico activo</h2>
         <div class="selectedBox">
-          <span>Par seleccionado</span>
+          <span id="selectedSymbolLabel">Par seleccionado</span>
           <strong id="selectedSymbol">R_10</strong>
         </div>
 
+        <section id="browserSyncCard" class="browserSyncCard hidden">
+          <div class="browserSyncHead">
+            <span id="browserSyncDot" class="browserSyncDot"></span>
+            <div>
+              <strong id="browserSyncStatus">Esperando extensión…</strong>
+              <small>Chrome / Edge · Deriv activo</small>
+            </div>
+          </div>
+          <div class="browserDetectedGrid">
+            <div><span>Mercado</span><strong id="browserMarketText">—</strong></div>
+            <div><span>Contrato</span><strong id="browserContractText">—</strong></div>
+          </div>
+          <p id="browserPageText" class="browserPageText">Abrí Deriv y seleccioná el mercado.</p>
+        </section>
+
         <div class="panelTabs" role="tablist">
-          <button class="panelTabBtn active" data-panel-tab="drawingPanel">Dibujo</button>
-          <button class="panelTabBtn" data-panel-tab="tradePanel">Operar</button>
+          <button id="drawingTabBtn" class="panelTabBtn active" data-panel-tab="drawingPanel">Dibujo</button>
+          <button id="tradeTabBtn" class="panelTabBtn" data-panel-tab="tradePanel">Operar</button>
         </div>
 
         <div id="drawingPanel" class="panelPane">

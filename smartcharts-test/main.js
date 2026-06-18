@@ -1,9 +1,112 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const http = require('http');
 const path = require('path');
 const crypto = require('crypto');
 
 let mainWindow;
 let pinned = false;
+let compactMode = false;
+let normalBounds = null;
+let pinnedBeforeCompact = false;
+let syncServer = null;
+
+const SYNC_PORT = 17858;
+const VALID_SYMBOLS = new Set(['R_10', 'R_25', 'R_50', 'R_75', 'R_100']);
+let browserState = {
+  connected: false,
+  derivDetected: false,
+  symbol: null,
+  label: null,
+  contractMode: null,
+  title: '',
+  url: '',
+  receivedAt: 0
+};
+
+function sendJson(res, status, value) {
+  res.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Cache-Control': 'no-store'
+  });
+  res.end(JSON.stringify(value));
+}
+
+function normalizeBrowserState(input = {}) {
+  const symbol = VALID_SYMBOLS.has(String(input.symbol || '').toUpperCase())
+    ? String(input.symbol).toUpperCase()
+    : null;
+  const contractMode = ['rise_fall', 'higher_lower'].includes(input.contractMode)
+    ? input.contractMode
+    : null;
+
+  return {
+    connected: true,
+    derivDetected: Boolean(input.derivDetected),
+    symbol,
+    label: String(input.label || '').slice(0, 80),
+    contractMode,
+    title: String(input.title || '').slice(0, 180),
+    url: String(input.url || '').slice(0, 600),
+    receivedAt: Date.now()
+  };
+}
+
+function broadcastBrowserState() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('browser-state', browserState);
+  }
+}
+
+function startBrowserSyncServer() {
+  if (syncServer) return;
+  syncServer = http.createServer((req, res) => {
+    if (req.method === 'OPTIONS') {
+      sendJson(res, 204, {});
+      return;
+    }
+
+    if (req.method === 'GET' && req.url === '/health') {
+      sendJson(res, 200, { ok: true, app: 'Deriv IC', port: SYNC_PORT });
+      return;
+    }
+
+    if (req.method === 'GET' && req.url === '/state') {
+      sendJson(res, 200, browserState);
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/state') {
+      let raw = '';
+      req.setEncoding('utf8');
+      req.on('data', (chunk) => {
+        raw += chunk;
+        if (raw.length > 65536) req.destroy();
+      });
+      req.on('end', () => {
+        try {
+          browserState = normalizeBrowserState(JSON.parse(raw || '{}'));
+          broadcastBrowserState();
+          sendJson(res, 200, { ok: true, receivedAt: browserState.receivedAt });
+        } catch (error) {
+          sendJson(res, 400, { ok: false, error: error.message });
+        }
+      });
+      return;
+    }
+
+    sendJson(res, 404, { ok: false, error: 'Not found' });
+  });
+
+  syncServer.on('error', (error) => {
+    console.error('Deriv browser sync server:', error);
+  });
+
+  syncServer.listen(SYNC_PORT, '127.0.0.1');
+}
+
 
 function applyPinned(value) {
   pinned = Boolean(value);
@@ -21,7 +124,7 @@ function createWindow() {
     height: 930,
     minWidth: 1150,
     minHeight: 700,
-    title: 'Deriv 5 Gráficos + IC',
+    title: 'Deriv IC — 5 gráficos / Navegador',
     backgroundColor: '#10131d',
     autoHideMenuBar: true,
     webPreferences: {
@@ -36,10 +139,15 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  startBrowserSyncServer();
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on('before-quit', () => {
+  try { syncServer?.close(); } catch (_) {}
 });
 
 app.on('window-all-closed', () => {
@@ -48,6 +156,43 @@ app.on('window-all-closed', () => {
 
 ipcMain.handle('set-pinned', (_event, value) => applyPinned(value));
 ipcMain.handle('get-pinned', () => pinned);
+
+ipcMain.handle('get-browser-state', () => browserState);
+
+ipcMain.handle('set-window-mode', (_event, mode) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return { mode: 'full' };
+
+  if (mode === 'compact') {
+    if (!compactMode) {
+      normalBounds = mainWindow.getBounds();
+      pinnedBeforeCompact = pinned;
+    }
+    compactMode = true;
+
+    const current = mainWindow.getBounds();
+    const area = screen.getDisplayMatching(current).workArea;
+    const width = Math.min(370, area.width);
+    const height = Math.min(760, area.height - 18);
+    const x = Math.max(area.x, Math.min(current.x, area.x + area.width - width));
+    const y = Math.max(area.y, Math.min(current.y, area.y + area.height - height));
+
+    mainWindow.setMinimumSize(330, 520);
+    mainWindow.setBounds({ x, y, width, height }, true);
+    mainWindow.setTitle('Deriv IC — Modo navegador');
+    applyPinned(true);
+    return { mode: 'compact', bounds: mainWindow.getBounds(), pinned: true };
+  }
+
+  compactMode = false;
+  mainWindow.setMinimumSize(1150, 700);
+  const fallback = { width: 1580, height: 930 };
+  mainWindow.setBounds(normalBounds || { ...mainWindow.getBounds(), ...fallback }, true);
+  mainWindow.setTitle('Deriv IC — 5 gráficos');
+  applyPinned(pinnedBeforeCompact);
+  return { mode: 'full', bounds: mainWindow.getBounds(), pinned };
+});
+
+ipcMain.handle('get-window-mode', () => compactMode ? 'compact' : 'full');
 
 ipcMain.handle('toggle-always-on-top', () => applyPinned(!pinned));
 ipcMain.handle('set-always-on-top', (_event, enabled) => applyPinned(enabled));

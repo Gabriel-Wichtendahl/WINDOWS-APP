@@ -36,6 +36,16 @@ const clearDrawingsBtn = document.getElementById('clearDrawingsBtn');
 const toolButtons = [...document.querySelectorAll('.toolBtn')];
 const panelTabButtons = [...document.querySelectorAll('.panelTabBtn')];
 const panelPanes = [...document.querySelectorAll('.panelPane')];
+const modeToggleBtn = document.getElementById('modeToggleBtn');
+const drawingTabBtn = document.getElementById('drawingTabBtn');
+const tradeTabBtn = document.getElementById('tradeTabBtn');
+const browserSyncCard = document.getElementById('browserSyncCard');
+const browserSyncDot = document.getElementById('browserSyncDot');
+const browserSyncStatus = document.getElementById('browserSyncStatus');
+const browserMarketText = document.getElementById('browserMarketText');
+const browserContractText = document.getElementById('browserContractText');
+const browserPageText = document.getElementById('browserPageText');
+const selectedSymbolLabel = document.getElementById('selectedSymbolLabel');
 
 const chartStates = new Map();
 const dataBySymbol = new Map();
@@ -44,6 +54,88 @@ let activeSymbol = 'R_10';
 let focusSymbol = null;
 let selectedTool = 'cursor';
 let pinned = false;
+let appMode = 'charts';
+let latestBrowserState = null;
+let removeBrowserStateListener = null;
+
+window.derivBrowserMode = false;
+window.derivBrowserState = null;
+
+function isFreshBrowserState(state, maxAgeMs = 4500) {
+  return Boolean(
+    state?.connected &&
+    state?.derivDetected &&
+    state?.symbol &&
+    Date.now() - Number(state.receivedAt || 0) <= maxAgeMs
+  );
+}
+
+function contractModeLabel(mode) {
+  if (mode === 'higher_lower') return 'Higher / Lower';
+  if (mode === 'rise_fall') return 'Rise / Fall';
+  return 'No detectado';
+}
+
+function applyBrowserState(state) {
+  latestBrowserState = state || null;
+  window.derivBrowserState = latestBrowserState;
+
+  const fresh = isFreshBrowserState(latestBrowserState);
+  browserSyncDot.classList.toggle('connected', fresh);
+  browserSyncStatus.textContent = fresh
+    ? 'Extensión conectada'
+    : latestBrowserState?.connected
+      ? 'Lectura desactualizada'
+      : 'Esperando extensión…';
+  browserMarketText.textContent = latestBrowserState?.symbol || '—';
+  browserContractText.textContent = contractModeLabel(latestBrowserState?.contractMode);
+  browserPageText.textContent = latestBrowserState?.title || 'Abrí Deriv y seleccioná el mercado.';
+
+  if (appMode === 'browser' && latestBrowserState?.symbol && chartStates.has(latestBrowserState.symbol)) {
+    setActiveSymbol(latestBrowserState.symbol);
+  }
+
+  window.dispatchEvent(new CustomEvent('browser-state-updated', {
+    detail: latestBrowserState || {},
+  }));
+}
+
+function refreshBrowserFreshness() {
+  if (!latestBrowserState) return;
+  applyBrowserState(latestBrowserState);
+}
+
+async function setAppMode(mode) {
+  appMode = mode === 'browser' ? 'browser' : 'charts';
+  window.derivBrowserMode = appMode === 'browser';
+  document.body.classList.toggle('browserMode', appMode === 'browser');
+  browserSyncCard.classList.toggle('hidden', appMode !== 'browser');
+  drawingTabBtn.classList.toggle('hidden', appMode === 'browser');
+  selectedSymbolLabel.textContent = appMode === 'browser' ? 'Mercado del navegador' : 'Par seleccionado';
+  modeToggleBtn.textContent = appMode === 'browser' ? 'Volver a 5 gráficos' : 'Modo navegador';
+
+  if (appMode === 'browser') {
+    if (focusSymbol) toggleFocus(focusSymbol);
+    showPanel('tradePanel');
+    document.querySelectorAll('.tradeDetails').forEach((details) => {
+      details.open = false;
+    });
+    try { await window.electronAPI?.setWindowMode?.('compact'); } catch (_) {}
+    try { applyBrowserState(await window.electronAPI?.getBrowserState?.()); } catch (_) {}
+  } else {
+    showPanel('drawingPanel');
+    try { await window.electronAPI?.setWindowMode?.('full'); } catch (_) {}
+    setTimeout(() => {
+      chartStates.forEach((state) => {
+        const rect = state.chartBody.getBoundingClientRect();
+        state.chart.applyOptions({ width: rect.width, height: rect.height });
+        state.drawingLayer.resize();
+        centerLiveWindow(state, true);
+        scheduleCurrentPriceDot(state);
+      });
+    }, 100);
+  }
+}
 
 function cacheKey(symbol) {
   return `deriv-live-cache:${symbol}`;
@@ -423,16 +515,15 @@ function setActiveSymbol(symbol) {
   updateToolButtons();
 }
 
-function updateToolButtons() {
-  panelTabButtons.forEach((button) => {
-  button.addEventListener('click', () => {
-    const panelId = button.dataset.panelTab;
-    panelTabButtons.forEach((item) => item.classList.toggle('active', item === button));
-    panelPanes.forEach((pane) => pane.classList.toggle('hidden', pane.id !== panelId));
+function showPanel(panelId) {
+  panelTabButtons.forEach((item) => {
+    item.classList.toggle('active', item.dataset.panelTab === panelId);
   });
-});
+  panelPanes.forEach((pane) => pane.classList.toggle('hidden', pane.id !== panelId));
+}
 
-toolButtons.forEach((button) => {
+function updateToolButtons() {
+  toolButtons.forEach((button) => {
     button.classList.toggle('active', button.dataset.tool === selectedTool);
   });
 }
@@ -525,6 +616,14 @@ SYMBOLS.forEach(createTile);
 
 setActiveSymbol(activeSymbol);
 
+panelTabButtons.forEach((button) => {
+  button.addEventListener('click', () => showPanel(button.dataset.panelTab));
+});
+
+modeToggleBtn.addEventListener('click', () => {
+  setAppMode(appMode === 'browser' ? 'charts' : 'browser');
+});
+
 toolButtons.forEach((button) => {
   button.addEventListener('click', () => setTool(button.dataset.tool));
 });
@@ -570,12 +669,19 @@ window.addEventListener('keydown', (event) => {
   }
 });
 
+if (window.electronAPI?.onBrowserState) {
+  removeBrowserStateListener = window.electronAPI.onBrowserState(applyBrowserState);
+}
+window.electronAPI?.getBrowserState?.().then(applyBrowserState).catch(() => {});
+setInterval(refreshBrowserFreshness, 1000);
+
 const feed = new DerivLiveFeed({
   onStatus: setConnectionStatus,
   onTick: addTick,
 });
 
 window.addEventListener('beforeunload', () => {
+  try { removeBrowserStateListener?.(); } catch (_) {}
   feed.destroy();
   chartStates.forEach((state) => {
     state.resizeObserver.disconnect();
