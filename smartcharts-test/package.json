@@ -1,7 +1,7 @@
 {
   "name": "deriv-5-graficos-ic-integrado",
-  "version": "0.4.3",
-  "description": "Deriv IC dos modos con cálculo Higher/Lower estable en modo navegador.",
+  "version": "0.4.4",
+  "description": "Deriv IC dos modos con ícono propio y operaciones REAL directas.",
   "main": "main.js",
   "scripts": {
     "start": "npm run build:web && electron .",
@@ -30,12 +30,15 @@
       "main.js",
       "preload.js",
       "build/**/*",
+      "build-resources/**/*",
       "package.json"
     ],
     "win": {
       "target": [
         "portable"
-      ]
-    }
+      ],
+      "icon": "build-resources/icon.ico"
+    },
+    "artifactName": "Deriv-IC-Dos-Modos-${version}.exe"
   }
 }

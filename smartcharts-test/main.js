@@ -126,6 +126,7 @@ function createWindow() {
     minWidth: 1150,
     minHeight: 700,
     title: 'Deriv IC — 5 gráficos / Navegador',
+    icon: path.join(__dirname, 'build-resources', 'icon.ico'),
     backgroundColor: '#10131d',
     autoHideMenuBar: true,
     webPreferences: {
@@ -140,6 +141,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  app.setAppUserModelId('com.gabriel.derivicdosmodos');
   startBrowserSyncServer();
   createWindow();
   app.on('activate', () => {

@@ -515,7 +515,7 @@ function updateAccountModeUi() {
   els.accountWarning.classList.toggle('realHint', selectedMode === 'real');
   els.accountWarning.classList.toggle('demoHint', selectedMode !== 'real');
   els.accountWarning.textContent = selectedMode === 'real'
-    ? 'ATENCIÓN: modo REAL seleccionado. Las operaciones usan saldo real.'
+    ? 'ATENCIÓN: modo REAL activo. Compra y Venta se ejecutan directamente.'
     : 'Modo demo activo. Ideal para testear sin tocar saldo real.';
 }
 
@@ -1081,16 +1081,6 @@ async function executeTrade(side) {
       quote = await getFreshTradeQuote(barrierSide);
       contractLabel = `${barrierSide.toUpperCase()} ${quote.returnPct.toFixed(1)}% · barrera ${quote.barrier}`;
 
-      if (activeAccountMode === 'real') {
-        const confirmed = window.confirm(`Vas a operar en cuenta REAL.\n\n${contractLabel}\n${symbol}\nStake: ${stake.toFixed(2)} ${currency}\n\n¿Confirmás la orden?`);
-        if (!confirmed) {
-          addLog('Orden REAL cancelada por confirmación manual.', 'warn');
-          isSendingOrder = false;
-          updateUi();
-          return;
-        }
-      }
-
       const buy = await buyWithRetry(quote, barrierSide);
       const contractId = buy.buy?.contract_id;
       if (!contractId) throw new Error('Deriv no devolvió contract_id');
@@ -1101,15 +1091,6 @@ async function executeTrade(side) {
     }
 
     const contractType = side === 'buy' ? 'CALL' : 'PUT';
-    if (activeAccountMode === 'real') {
-      const confirmed = window.confirm(`Vas a operar en cuenta REAL.\n\n${contractType} ${symbol}\nStake: ${stake.toFixed(2)} ${currency}\n\n¿Confirmás la orden?`);
-      if (!confirmed) {
-        addLog('Orden REAL cancelada por confirmación manual.', 'warn');
-        isSendingOrder = false;
-        updateUi();
-        return;
-      }
-    }
 
     const proposalReq = {
       proposal: 1,
